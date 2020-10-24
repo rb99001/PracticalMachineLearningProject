@@ -1,0 +1,87 @@
+---
+title: Predicting the manner and quality of Barbell Lifts using data from Fitness
+  Devices
+author: "Rohin Bhagavatula"
+date: "24/10/20"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+if(!file.exists("pml-training.csv"))
+{
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", "pml-training.csv", method = 'curl')
+}
+dataset <- read.csv("pml-training.csv", na.strings = c("NA", ""))
+if(!file.exists("pml-testing.csv"))
+{
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", "pml-testing.csv", method = 'curl')
+}
+validation <- read.csv("pml-testing.csv")
+```
+
+importing files:
+```{r}
+library(caret)
+library(randomForest)
+library(ggplot2)
+```
+
+
+```{r}
+set.seed(17)
+```
+
+
+```{r}
+inTrain = createDataPartition(y=dataset$classe, p=0.7, list=FALSE)
+training_data = dataset[inTrain,]
+testing_data = dataset[-inTrain,]
+```
+
+elimination of unwanted columns:
+
+```{r}
+na = sapply(training_data, function(x) {sum(is.na(x))}) #Make a vector of all the columns and the number of NA entries
+na
+NAcolumn = names(na[na > 0]) #Vector with all the columns that has NA values
+training_data = training_data[, !names(training_data) %in% NAcolumn] 
+names(training_data) 
+training_data <- training_data[, !names(training_data) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+For validation set:
+
+```{r}
+na = sapply(validation, function(x) {sum(is.na(x))}) #Make a vector of all the columns and the number of NA entries
+NAcolumn = names(na[na > 0]) #Vector with all the columns that has NA values
+validation = validation[, !names(validation) %in% NAcolumn] 
+validation <- validation[, !names(validation) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+For testing set:
+
+```{r}
+na = sapply(testing_data, function(x) {sum(is.na(x))}) #Make a vector of all the columns and the number of NA entries
+NAcolumn = names(na[na > 0]) #Vector with all the columns that has NA values
+testing_data = testing_data[, !names(testing_data) %in% NAcolumn] 
+testing_data <- testing_data[, !names(testing_data) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+
+```{r acc}
+model <- randomForest(classe ~ .,   data=training_data, ntree = 50)
+predictions <- predict(model, testing_data)
+confusionMatrix(predictions, testing_data$classe)
+modelAcc <- confusionMatrix(predictions, testing_data$classe)$overall[[1]]
+```
+
+The model is `r modelAcc` accurate.
+
+prediction:
+
+```{r}
+predictions <- predict(model, validation)
+predictions
+```
